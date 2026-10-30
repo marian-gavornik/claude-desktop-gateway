@@ -14,6 +14,18 @@
         "tools": true,
         "jsonMode": false
       }
+    },
+    "freellmapi": {
+      "profile": "anthropic-messages",
+      "baseUrl": "http://127.0.0.1:31415/v1",
+      "apiKeyEnv": "FREELLMAPI_API_KEY",
+      "referrer": "",
+      "title": "FreeLLMAPI",
+      "capabilities": {
+        "streaming": true,
+        "tools": true,
+        "jsonMode": false
+      }
     }
   },
   "routes": {
@@ -109,6 +121,28 @@
         "cache": {
           "enabled": true,
           "ttlSeconds": 300
+        }
+      }
+    ],
+    "claude-openrouter-free-auto": [
+      {
+        "provider": "openrouter",
+        "model": "openrouter/free",
+        "displayName": "OpenRouter Free Auto",
+        "cache": {
+          "enabled": true,
+          "ttlSeconds": 300
+        }
+      }
+    ],
+    "claude-freellmapi-auto": [
+      {
+        "provider": "freellmapi",
+        "model": "auto",
+        "displayName": "FreeLLMAPI Auto",
+        "cache": {
+          "enabled": false,
+          "ttlSeconds": 0
         }
       }
     ]

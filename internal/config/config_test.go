@@ -590,3 +590,117 @@ func TestLoadFromFileParsesTLSFiles(t *testing.T) {
 		t.Fatalf("Scheme = %q", cfg.Scheme())
 	}
 }
+
+func TestResolveRoutesRejectsUnknownClaudeAlias(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "gateway.local.json")
+
+	body := `{
+		"gatewayApiKeyEnv": "CLAUDE_GATEWAY_API_KEY",
+		"providers": {
+			"openrouter": {
+				"profile": "anthropic-messages",
+				"baseUrl": "https://openrouter.ai/api/v1",
+				"apiKeyEnv": "OPENROUTER_API_KEY"
+			},
+			"freellmapi": {
+				"profile": "anthropic-messages",
+				"baseUrl": "http://127.0.0.1:31415/v1",
+				"apiKeyEnv": "FREELLMAPI_API_KEY"
+			}
+		},
+		"routes": {
+			"claude-openrouter-free-auto": [
+				{
+					"provider": "openrouter",
+					"model": "openrouter/free"
+				}
+			],
+			"claude-freellmapi-auto": [
+				{
+					"provider": "freellmapi",
+					"model": "auto"
+				}
+			]
+		}
+	}`
+
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := config.LoadFromFile(path, map[string]string{
+		"OPENROUTER_API_KEY":     "or-test-key",
+		"FREELLMAPI_API_KEY":     "free-test-key",
+		"CLAUDE_GATEWAY_API_KEY": "client-test-key",
+	})
+	if err != nil {
+		t.Fatalf("LoadFromFile returned error: %v", err)
+	}
+
+	tests := []struct {
+		name         string
+		model        string
+		wantProvider string
+		wantModel    string
+		wantOK       bool
+	}{
+		{
+			name:         "configured OpenRouter route",
+			model:        "claude-openrouter-free-auto",
+			wantProvider: "openrouter",
+			wantModel:    "openrouter/free",
+			wantOK:       true,
+		},
+		{
+			name:         "configured FreeLLMAPI route",
+			model:        "claude-freellmapi-auto",
+			wantProvider: "freellmapi",
+			wantModel:    "auto",
+			wantOK:       true,
+		},
+		{
+			name:   "unknown Claude alias",
+			model:  "claude-unknown-model",
+			wantOK: false,
+		},
+		{
+			name:         "direct OpenRouter model",
+			model:        "openai/gpt-4o-mini",
+			wantProvider: "openrouter",
+			wantModel:    "openai/gpt-4o-mini",
+			wantOK:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			route, ok := cfg.ResolveRoute(tt.model)
+
+			if ok != tt.wantOK {
+				t.Fatalf(
+					"ResolveRoute(%q) ok = %v, want %v",
+					tt.model, ok, tt.wantOK,
+				)
+			}
+
+			if !ok {
+				return
+			}
+
+			if route.Provider != tt.wantProvider {
+				t.Errorf(
+					"route.Provider = %q, want %q",
+					route.Provider, tt.wantProvider,
+				)
+			}
+
+			if route.Model != tt.wantModel {
+				t.Errorf(
+					"route.Model = %q, want %q",
+					route.Model, tt.wantModel,
+				)
+			}
+		})
+	}
+}

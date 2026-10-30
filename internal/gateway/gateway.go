@@ -243,14 +243,14 @@ func parseAnthropicRequest(body io.Reader) (anthropicRequest, string) {
 		return anthropicRequest{}, "max_tokens must be a positive number"
 	}
 	if len(req.Messages) == 0 {
-		return anthropicRequest{}, "messages must be an array of user/assistant messages"
+		return anthropicRequest{}, "messages is missing, empty, or not a valid non-empty array"
 	}
-	for _, message := range req.Messages {
+	for i, message := range req.Messages {
 		if message.Role != "user" && message.Role != "assistant" {
-			return anthropicRequest{}, "messages must be an array of user/assistant messages"
+			return anthropicRequest{}, fmt.Sprintf("messages[%d] has unsupported role %q", i, message.Role)
 		}
 		if !isStringJSON(message.Content) && !isArrayJSON(message.Content) {
-			return anthropicRequest{}, "messages must be an array of user/assistant messages"
+			return anthropicRequest{}, fmt.Sprintf("messages[%d].content must be a string or array", i)
 		}
 	}
 	return req, ""

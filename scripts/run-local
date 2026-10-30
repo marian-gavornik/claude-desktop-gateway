@@ -28,7 +28,7 @@ env_file=${CLAUDE_GATEWAY_ENV_FILE:-"$repo_root/.env.local"}
 
 if [ ! -f "$env_file" ]; then
   echo "missing env file: $env_file" >&2
-  echo "copy .env.local.example to .env.local and set OPENROUTER_API_KEY and CLAUDE_GATEWAY_API_KEY" >&2
+  echo "copy .env.local.example to .env.local and configure the required credentials" >&2
   exit 1
 fi
 
@@ -55,6 +55,25 @@ require_env() {
 
 require_env OPENROUTER_API_KEY
 require_env CLAUDE_GATEWAY_API_KEY
+
+# Retrieve FreeLLMAPI credentials from the macOS login Keychain.
+# Optional here; configured providers are validated by the Go config loader.
+keychain_account=$(id -un)
+
+if FREELLMAPI_API_KEY=$(
+  /usr/bin/security find-generic-password \
+    -s freellmapi-api-key \
+    -a "$keychain_account" \
+    -w 2>/dev/null
+); then
+  if [ -n "$FREELLMAPI_API_KEY" ]; then
+    export FREELLMAPI_API_KEY
+  else
+    unset FREELLMAPI_API_KEY
+  fi
+else
+  unset FREELLMAPI_API_KEY
+fi
 
 export CLAUDE_GATEWAY_CONFIG="$config_file"
 

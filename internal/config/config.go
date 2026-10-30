@@ -446,12 +446,24 @@ func (c Config) ResolveRoutes(model string) ([]Route, bool) {
 	if trimmed == "" {
 		return nil, false
 	}
+
+	// Prefer explicitly configured routes. These map the Claude Desktop
+	// model ID to the actual provider and upstream model.
 	if routes := c.Routes[trimmed]; len(routes) > 0 {
 		return append([]Route(nil), routes...), true
 	}
+
+	// Unknown Claude model IDs must not be interpreted as direct
+	// OpenRouter model IDs.
+	if strings.HasPrefix(trimmed, "claude-") {
+		return nil, false
+	}
+
+	// Preserve direct OpenRouter model support.
 	if _, ok := c.Providers[DefaultOpenRouterName]; ok {
 		return []Route{{Provider: DefaultOpenRouterName, Model: trimmed}}, true
 	}
+
 	return nil, false
 }
 
